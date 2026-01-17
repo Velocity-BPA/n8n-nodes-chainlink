@@ -1,0 +1,35 @@
+# Source files (dist is published)
+*.ts
+!*.d.ts
+tsconfig.json
+
+# Config files
+.eslintrc.js
+.prettierrc
+.gitignore
+gulpfile.js
+jest.config.js
+
+# Development
+node_modules/
+.git/
+.github/
+
+# Test files
+test/
+*.test.ts
+*.spec.ts
+coverage/
+
+# Scripts (not needed in npm package)
+scripts/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
