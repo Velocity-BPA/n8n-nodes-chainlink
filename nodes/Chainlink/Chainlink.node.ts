@@ -1,6 +1,14 @@
 /**
- * Chainlink Node for n8n
- * Comprehensive integration with Chainlink oracle services
+ * Copyright (c) 2026 Velocity BPA
+ * 
+ * Licensed under the Business Source License 1.1 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     https://github.com/VelocityBPA/n8n-nodes-chainlink/blob/main/LICENSE
+ * 
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 import {
@@ -9,17 +17,8 @@ import {
   INodeType,
   INodeTypeDescription,
   NodeOperationError,
+  NodeApiError,
 } from 'n8n-workflow';
-
-// Import action handlers
-import * as priceFeed from './actions/priceFeed';
-import * as dataFeed from './actions/dataFeed';
-import * as vrf from './actions/vrf';
-import * as automation from './actions/automation';
-import * as ccip from './actions/ccip';
-import * as functions from './actions/functions';
-import * as linkToken from './actions/linkToken';
-import * as networkUtils from './actions/networkUtils';
 
 export class Chainlink implements INodeType {
   description: INodeTypeDescription = {
@@ -28,8 +27,8 @@ export class Chainlink implements INodeType {
     icon: 'file:chainlink.svg',
     group: ['transform'],
     version: 1,
-    subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
-    description: 'Interact with Chainlink oracle services - Price Feeds, VRF, Automation, CCIP, and more',
+    subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+    description: 'Interact with the Chainlink API',
     defaults: {
       name: 'Chainlink',
     },
@@ -37,375 +36,1504 @@ export class Chainlink implements INodeType {
     outputs: ['main'],
     credentials: [
       {
-        name: 'chainlinkRpcApi',
+        name: 'chainlinkApi',
         required: true,
       },
     ],
     properties: [
+      // Resource selector
       {
         displayName: 'Resource',
         name: 'resource',
         type: 'options',
         noDataExpression: true,
         options: [
-          { name: 'Price Feed', value: 'priceFeed', description: 'Chainlink Data Feeds for asset prices' },
-          { name: 'Data Feed', value: 'dataFeed', description: 'Specialized feeds (PoR, NFT Floor, L2 Sequencer)' },
-          { name: 'VRF', value: 'vrf', description: 'Verifiable Random Function' },
-          { name: 'Automation', value: 'automation', description: 'Chainlink Automation (Keepers)' },
-          { name: 'CCIP', value: 'ccip', description: 'Cross-Chain Interoperability Protocol' },
-          { name: 'Functions', value: 'functions', description: 'Chainlink Functions (Serverless)' },
-          { name: 'LINK Token', value: 'linkToken', description: 'LINK token operations' },
-          { name: 'Network Utilities', value: 'networkUtils', description: 'Network helpers and utilities' },
+          {
+            name: 'PriceFeeds',
+            value: 'priceFeeds',
+          },
+          {
+            name: 'VRFRequests',
+            value: 'vRFRequests',
+          },
+          {
+            name: 'Automation',
+            value: 'automation',
+          },
+          {
+            name: 'CCIP',
+            value: 'cCIP',
+          },
+          {
+            name: 'unknown',
+            value: 'unknown',
+          }
         ],
-        default: 'priceFeed',
+        default: 'priceFeeds',
       },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['priceFeed'] } },
-        options: [
-          { name: 'Get Latest Price', value: 'getLatestPrice', action: 'Get latest price' },
-          { name: 'Get Price Feed Data', value: 'getPriceFeedData', action: 'Get price feed data' },
-          { name: 'Get Historical Price', value: 'getHistoricalPrice', action: 'Get historical price' },
-          { name: 'Get Feed Description', value: 'getFeedDescription', action: 'Get feed description' },
-          { name: 'Get Multiple Prices', value: 'getMultiplePrices', action: 'Get multiple prices' },
-          { name: 'List Available Feeds', value: 'listAvailableFeeds', action: 'List available feeds' },
-          { name: 'Calculate Derived Price', value: 'getDerivedPrice', action: 'Calculate derived price' },
-          { name: 'Get Feed Registry Price', value: 'getFeedRegistryPrice', action: 'Get feed registry price' },
-        ],
-        default: 'getLatestPrice',
-      },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['dataFeed'] } },
-        options: [
-          { name: 'Get Proof of Reserve', value: 'getProofOfReserve', action: 'Get proof of reserve' },
-          { name: 'Get NFT Floor Price', value: 'getNFTFloorPrice', action: 'Get NFT floor price' },
-          { name: 'Get L2 Sequencer Status', value: 'getL2SequencerStatus', action: 'Get L2 sequencer status' },
-          { name: 'List PoR Feeds', value: 'listPorFeeds', action: 'List PoR feeds' },
-          { name: 'List NFT Floor Feeds', value: 'listNftFloorFeeds', action: 'List NFT floor feeds' },
-          { name: 'List Sequencer Feeds', value: 'listSequencerFeeds', action: 'List sequencer feeds' },
-        ],
-        default: 'getProofOfReserve',
-      },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['vrf'] } },
-        options: [
-          { name: 'Get Subscription Details', value: 'getSubscriptionDetails', action: 'Get subscription details' },
-          { name: 'Get VRF Coordinator Info', value: 'getVRFCoordinatorInfo', action: 'Get VRF coordinator info' },
-          { name: 'List Subscription Consumers', value: 'listSubscriptionConsumers', action: 'List subscription consumers' },
-          { name: 'Calculate Request Price', value: 'calculateRequestPrice', action: 'Calculate request price' },
-          { name: 'Check Request Status', value: 'checkRequestStatus', action: 'Check request status' },
-          { name: 'Decode VRF Request', value: 'decodeVRFRequest', action: 'Decode VRF request' },
-          { name: 'Get VRF Networks', value: 'getVRFNetworks', action: 'Get VRF networks' },
-        ],
-        default: 'getSubscriptionDetails',
-      },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['automation'] } },
-        options: [
-          { name: 'Get Upkeep Details', value: 'getUpkeepDetails', action: 'Get upkeep details' },
-          { name: 'Check Upkeep Status', value: 'checkUpkeepStatus', action: 'Check upkeep status' },
-          { name: 'Get Upkeep Balance', value: 'getUpkeepBalance', action: 'Get upkeep balance' },
-          { name: 'Get Minimum Balance', value: 'getMinimumBalance', action: 'Get minimum balance' },
-          { name: 'Simulate Upkeep', value: 'simulateUpkeep', action: 'Simulate upkeep' },
-          { name: 'Get Registry State', value: 'getRegistryState', action: 'Get registry state' },
-          { name: 'Get Upkeep History', value: 'getUpkeepHistory', action: 'Get upkeep history' },
-          { name: 'List Automation Networks', value: 'listAutomationNetworks', action: 'List automation networks' },
-        ],
-        default: 'getUpkeepDetails',
-      },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['ccip'] } },
-        options: [
-          { name: 'Get Supported Lanes', value: 'getSupportedLanes', action: 'Get supported lanes' },
-          { name: 'Check Lane Support', value: 'checkLaneSupport', action: 'Check lane support' },
-          { name: 'Calculate Message Fee', value: 'calculateMessageFee', action: 'Calculate message fee' },
-          { name: 'Get Router Configuration', value: 'getRouterConfiguration', action: 'Get router configuration' },
-          { name: 'Track Cross-Chain Message', value: 'trackCrossChainMessage', action: 'Track cross-chain message' },
-          { name: 'List Chain Selectors', value: 'listChainSelectors', action: 'List chain selectors' },
-          { name: 'Get Token Transfer Limits', value: 'getTokenTransferLimits', action: 'Get token transfer limits' },
-        ],
-        default: 'getSupportedLanes',
-      },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['functions'] } },
-        options: [
-          { name: 'Get Subscription Info', value: 'getSubscriptionInfo', action: 'Get subscription info' },
-          { name: 'Get DON Configuration', value: 'getDONConfiguration', action: 'Get DON configuration' },
-          { name: 'Estimate Request Cost', value: 'estimateRequestCost', action: 'Estimate request cost' },
-          { name: 'Decode Response', value: 'decodeResponse', action: 'Decode response' },
-          { name: 'Get Supported Networks', value: 'getSupportedNetworks', action: 'Get supported networks' },
-          { name: 'Validate Source Code', value: 'validateSourceCode', action: 'Validate source code' },
-        ],
-        default: 'getSubscriptionInfo',
-      },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['linkToken'] } },
-        options: [
-          { name: 'Get LINK Balance', value: 'getLinkBalance', action: 'Get LINK balance' },
-          { name: 'Get LINK Price', value: 'getLinkPrice', action: 'Get LINK price' },
-          { name: 'Transfer LINK', value: 'transferLink', action: 'Transfer LINK' },
-          { name: 'Get LINK Token Address', value: 'getLinkTokenAddress', action: 'Get LINK token address' },
-          { name: 'Check LINK Allowance', value: 'checkLinkAllowance', action: 'Check LINK allowance' },
-          { name: 'Get LINK Total Supply', value: 'getLinkTotalSupply', action: 'Get LINK total supply' },
-          { name: 'Get All LINK Addresses', value: 'getAllLinkAddresses', action: 'Get all LINK addresses' },
-        ],
-        default: 'getLinkBalance',
-      },
-      {
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        noDataExpression: true,
-        displayOptions: { show: { resource: ['networkUtils'] } },
-        options: [
-          { name: 'Get Gas Price', value: 'getGasPrice', action: 'Get gas price' },
-          { name: 'Get ETH Price', value: 'getEthPrice', action: 'Get ETH price' },
-          { name: 'Get Network Status', value: 'getNetworkStatus', action: 'Get network status' },
-          { name: 'Validate Address', value: 'validateAddress', action: 'Validate address' },
-          { name: 'List Supported Networks', value: 'listSupportedNetworks', action: 'List supported networks' },
-          { name: 'Check Contract Exists', value: 'checkContractExists', action: 'Check contract exists' },
-          { name: 'Convert Units', value: 'convertUnits', action: 'Convert units' },
-          { name: 'Get Block Info', value: 'getBlockInfo', action: 'Get block info' },
-        ],
-        default: 'getGasPrice',
-      },
-      // Price Feed Parameters
-      { displayName: 'Feed Source', name: 'feedSource', type: 'options', options: [{ name: 'Preset Feed', value: 'preset' }, { name: 'Custom Address', value: 'custom' }], default: 'preset', displayOptions: { show: { resource: ['priceFeed'], operation: ['getLatestPrice'] } } },
-      { displayName: 'Price Pair', name: 'pricePair', type: 'options', options: [{ name: 'ETH/USD', value: 'ETH/USD' }, { name: 'BTC/USD', value: 'BTC/USD' }, { name: 'LINK/USD', value: 'LINK/USD' }, { name: 'USDC/USD', value: 'USDC/USD' }, { name: 'USDT/USD', value: 'USDT/USD' }, { name: 'MATIC/USD', value: 'MATIC/USD' }, { name: 'AVAX/USD', value: 'AVAX/USD' }, { name: 'BNB/USD', value: 'BNB/USD' }], default: 'ETH/USD', displayOptions: { show: { resource: ['priceFeed'], operation: ['getLatestPrice'], feedSource: ['preset'] } } },
-      { displayName: 'Feed Address', name: 'feedAddress', type: 'string', default: '', placeholder: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', displayOptions: { show: { resource: ['priceFeed'], operation: ['getLatestPrice'], feedSource: ['custom'] } } },
-      { displayName: 'Feed Address', name: 'feedAddress', type: 'string', default: '', placeholder: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', displayOptions: { show: { resource: ['priceFeed'], operation: ['getPriceFeedData', 'getHistoricalPrice', 'getFeedDescription'] } } },
-      { displayName: 'Round ID', name: 'roundId', type: 'string', default: '', displayOptions: { show: { resource: ['priceFeed'], operation: ['getHistoricalPrice'] } } },
-      { displayName: 'Feed Addresses', name: 'feedAddresses', type: 'string', default: '', placeholder: '0x...,0x...', displayOptions: { show: { resource: ['priceFeed'], operation: ['getMultiplePrices'] } } },
-      { displayName: 'Feed Category', name: 'feedCategory', type: 'options', options: [{ name: 'All', value: 'all' }, { name: 'Crypto', value: 'crypto' }, { name: 'Forex', value: 'forex' }, { name: 'Commodity', value: 'commodity' }], default: 'all', displayOptions: { show: { resource: ['priceFeed'], operation: ['listAvailableFeeds'] } } },
-      { displayName: 'Base Feed Address', name: 'baseFeedAddress', type: 'string', default: '', displayOptions: { show: { resource: ['priceFeed'], operation: ['getDerivedPrice'] } } },
-      { displayName: 'Quote Feed Address', name: 'quoteFeedAddress', type: 'string', default: '', displayOptions: { show: { resource: ['priceFeed'], operation: ['getDerivedPrice'] } } },
-      { displayName: 'Base Asset', name: 'baseAsset', type: 'options', options: [{ name: 'ETH', value: 'ETH' }, { name: 'BTC', value: 'BTC' }, { name: 'LINK', value: 'LINK' }], default: 'ETH', displayOptions: { show: { resource: ['priceFeed'], operation: ['getFeedRegistryPrice'] } } },
-      { displayName: 'Quote Asset', name: 'quoteAsset', type: 'options', options: [{ name: 'USD', value: 'USD' }, { name: 'EUR', value: 'EUR' }], default: 'USD', displayOptions: { show: { resource: ['priceFeed'], operation: ['getFeedRegistryPrice'] } } },
-      // Data Feed Parameters
-      { displayName: 'PoR Feed Source', name: 'porFeedSource', type: 'options', options: [{ name: 'Preset Feed', value: 'preset' }, { name: 'Custom Address', value: 'custom' }], default: 'preset', displayOptions: { show: { resource: ['dataFeed'], operation: ['getProofOfReserve'] } } },
-      { displayName: 'PoR Asset', name: 'porAsset', type: 'options', options: [{ name: 'WBTC', value: 'WBTC' }, { name: 'TUSD', value: 'TUSD' }, { name: 'USDC', value: 'USDC' }], default: 'WBTC', displayOptions: { show: { resource: ['dataFeed'], operation: ['getProofOfReserve'], porFeedSource: ['preset'] } } },
-      { displayName: 'PoR Feed Address', name: 'porFeedAddress', type: 'string', default: '', displayOptions: { show: { resource: ['dataFeed'], operation: ['getProofOfReserve'], porFeedSource: ['custom'] } } },
-      { displayName: 'NFT Feed Source', name: 'nftFeedSource', type: 'options', options: [{ name: 'Preset Collection', value: 'preset' }, { name: 'Custom Address', value: 'custom' }], default: 'preset', displayOptions: { show: { resource: ['dataFeed'], operation: ['getNFTFloorPrice'] } } },
-      { displayName: 'NFT Collection', name: 'nftCollection', type: 'options', options: [{ name: 'Bored Ape Yacht Club', value: 'BAYC' }, { name: 'CryptoPunks', value: 'CRYPTOPUNKS' }, { name: 'Mutant Ape Yacht Club', value: 'MAYC' }], default: 'BAYC', displayOptions: { show: { resource: ['dataFeed'], operation: ['getNFTFloorPrice'], nftFeedSource: ['preset'] } } },
-      { displayName: 'NFT Feed Address', name: 'nftFeedAddress', type: 'string', default: '', displayOptions: { show: { resource: ['dataFeed'], operation: ['getNFTFloorPrice'], nftFeedSource: ['custom'] } } },
-      { displayName: 'Sequencer Feed Source', name: 'sequencerFeedSource', type: 'options', options: [{ name: 'Auto-detect', value: 'auto' }, { name: 'Custom Address', value: 'custom' }], default: 'auto', displayOptions: { show: { resource: ['dataFeed'], operation: ['getL2SequencerStatus'] } } },
-      { displayName: 'Sequencer Feed Address', name: 'sequencerFeedAddress', type: 'string', default: '', displayOptions: { show: { resource: ['dataFeed'], operation: ['getL2SequencerStatus'], sequencerFeedSource: ['custom'] } } },
-      // VRF Parameters
-      { displayName: 'Subscription ID', name: 'subscriptionId', type: 'number', default: 0, displayOptions: { show: { resource: ['vrf'], operation: ['getSubscriptionDetails', 'listSubscriptionConsumers'] } } },
-      { displayName: 'Subscription ID', name: 'subscriptionId', type: 'number', default: 0, displayOptions: { show: { resource: ['functions'], operation: ['getSubscriptionInfo'] } } },
-      { displayName: 'Callback Gas Limit', name: 'callbackGasLimit', type: 'number', default: 100000, displayOptions: { show: { resource: ['vrf'], operation: ['calculateRequestPrice'] } } },
-      { displayName: 'Callback Gas Limit', name: 'callbackGasLimit', type: 'number', default: 300000, displayOptions: { show: { resource: ['functions'], operation: ['estimateRequestCost'] } } },
-      { displayName: 'Number of Words', name: 'numWords', type: 'number', default: 1, displayOptions: { show: { resource: ['vrf'], operation: ['calculateRequestPrice'] } } },
-      { displayName: 'Request ID', name: 'requestId', type: 'string', default: '', displayOptions: { show: { resource: ['vrf'], operation: ['checkRequestStatus', 'decodeVRFRequest'] } } },
-      // Automation Parameters
-      { displayName: 'Upkeep ID', name: 'upkeepId', type: 'string', default: '', displayOptions: { show: { resource: ['automation'], operation: ['getUpkeepDetails', 'checkUpkeepStatus', 'getUpkeepBalance', 'getMinimumBalance', 'simulateUpkeep', 'getUpkeepHistory'] } } },
-      { displayName: 'Simulate From Address', name: 'simulateFrom', type: 'string', default: '0x0000000000000000000000000000000000000000', displayOptions: { show: { resource: ['automation'], operation: ['simulateUpkeep'] } } },
-      { displayName: 'Lookback Blocks', name: 'lookbackBlocks', type: 'number', default: 10000, displayOptions: { show: { resource: ['automation'], operation: ['getUpkeepHistory'] } } },
-      // CCIP Parameters
-      { displayName: 'Destination Network', name: 'destinationNetwork', type: 'options', options: [{ name: 'Ethereum Mainnet', value: 'ethereum-mainnet' }, { name: 'Polygon Mainnet', value: 'polygon-mainnet' }, { name: 'Arbitrum One', value: 'arbitrum-mainnet' }, { name: 'Optimism Mainnet', value: 'optimism-mainnet' }, { name: 'Base Mainnet', value: 'base-mainnet' }], default: 'ethereum-mainnet', displayOptions: { show: { resource: ['ccip'], operation: ['checkLaneSupport', 'calculateMessageFee', 'getTokenTransferLimits'] } } },
-      { displayName: 'Receiver Address', name: 'receiverAddress', type: 'string', default: '', displayOptions: { show: { resource: ['ccip'], operation: ['calculateMessageFee'] } } },
-      { displayName: 'Message Data', name: 'messageData', type: 'string', default: '0x', displayOptions: { show: { resource: ['ccip'], operation: ['calculateMessageFee'] } } },
-      { displayName: 'Gas Limit', name: 'gasLimit', type: 'number', default: 200000, displayOptions: { show: { resource: ['ccip'], operation: ['calculateMessageFee'] } } },
-      { displayName: 'Message ID', name: 'messageId', type: 'string', default: '', displayOptions: { show: { resource: ['ccip'], operation: ['trackCrossChainMessage'] } } },
-      { displayName: 'Source Transaction Hash', name: 'sourceTxHash', type: 'string', default: '', displayOptions: { show: { resource: ['ccip'], operation: ['trackCrossChainMessage'] } } },
-      // Functions Parameters
-      { displayName: 'Response Hex', name: 'responseHex', type: 'string', default: '', displayOptions: { show: { resource: ['functions'], operation: ['decodeResponse'] } } },
-      { displayName: 'Response Type', name: 'responseType', type: 'options', options: [{ name: 'String', value: 'string' }, { name: 'Uint256', value: 'uint256' }, { name: 'Int256', value: 'int256' }, { name: 'Bytes32', value: 'bytes32' }, { name: 'JSON', value: 'json' }], default: 'string', displayOptions: { show: { resource: ['functions'], operation: ['decodeResponse'] } } },
-      { displayName: 'Source Code', name: 'sourceCode', type: 'string', typeOptions: { rows: 10 }, default: '', displayOptions: { show: { resource: ['functions'], operation: ['validateSourceCode'] } } },
-      // LINK Token Parameters
-      { displayName: 'Address to Check', name: 'addressToCheck', type: 'string', default: '', displayOptions: { show: { resource: ['linkToken'], operation: ['getLinkBalance'] } } },
-      { displayName: 'To Address', name: 'toAddress', type: 'string', default: '', displayOptions: { show: { resource: ['linkToken'], operation: ['transferLink'] } } },
-      { displayName: 'Amount', name: 'amount', type: 'string', default: '0', displayOptions: { show: { resource: ['linkToken'], operation: ['transferLink'] } } },
-      { displayName: 'Owner Address', name: 'ownerAddress', type: 'string', default: '', displayOptions: { show: { resource: ['linkToken'], operation: ['checkLinkAllowance'] } } },
-      { displayName: 'Spender Address', name: 'spenderAddress', type: 'string', default: '', displayOptions: { show: { resource: ['linkToken'], operation: ['checkLinkAllowance'] } } },
-      // Network Utils Parameters
-      { displayName: 'Address to Validate', name: 'addressToValidate', type: 'string', default: '', displayOptions: { show: { resource: ['networkUtils'], operation: ['validateAddress'] } } },
-      { displayName: 'Contract Address', name: 'contractAddress', type: 'string', default: '', displayOptions: { show: { resource: ['networkUtils'], operation: ['checkContractExists'] } } },
-      { displayName: 'Value', name: 'value', type: 'string', default: '1', displayOptions: { show: { resource: ['networkUtils'], operation: ['convertUnits'] } } },
-      { displayName: 'From Unit', name: 'fromUnit', type: 'options', options: [{ name: 'Wei', value: 'wei' }, { name: 'Gwei', value: 'gwei' }, { name: 'Ether', value: 'ether' }], default: 'ether', displayOptions: { show: { resource: ['networkUtils'], operation: ['convertUnits'] } } },
-      { displayName: 'To Unit', name: 'toUnit', type: 'options', options: [{ name: 'Wei', value: 'wei' }, { name: 'Gwei', value: 'gwei' }, { name: 'Ether', value: 'ether' }], default: 'wei', displayOptions: { show: { resource: ['networkUtils'], operation: ['convertUnits'] } } },
-      { displayName: 'Block Identifier', name: 'blockIdentifier', type: 'string', default: 'latest', displayOptions: { show: { resource: ['networkUtils'], operation: ['getBlockInfo'] } } },
+      // Operation dropdowns per resource
+{
+  displayName: 'Operation',
+  name: 'operation',
+  type: 'options',
+  noDataExpression: true,
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+    },
+  },
+  options: [
+    {
+      name: 'Get All Feeds',
+      value: 'getAllFeeds',
+      description: 'Get list of all available price feeds',
+      action: 'Get all feeds',
+    },
+    {
+      name: 'Get Feed',
+      value: 'getFeed',
+      description: 'Get specific price feed details',
+      action: 'Get feed details',
+    },
+    {
+      name: 'Get Feed Rounds',
+      value: 'getFeedRounds',
+      description: 'Get historical price rounds for a feed',
+      action: 'Get feed rounds',
+    },
+    {
+      name: 'Get Latest Price',
+      value: 'getLatestPrice',
+      description: 'Get latest price data for a feed',
+      action: 'Get latest price',
+    },
+    {
+      name: 'Search Feeds',
+      value: 'searchFeeds',
+      description: 'Search price feeds by symbol or name',
+      action: 'Search feeds',
+    },
+  ],
+  default: 'getAllFeeds',
+},
+{
+  displayName: 'Operation',
+  name: 'operation',
+  type: 'options',
+  noDataExpression: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+    },
+  },
+  options: [
+    {
+      name: 'Create VRF Request',
+      value: 'createVRFRequest',
+      description: 'Submit new VRF randomness request',
+      action: 'Create VRF request',
+    },
+    {
+      name: 'Get VRF Request',
+      value: 'getVRFRequest',
+      description: 'Get VRF request details and status',
+      action: 'Get VRF request',
+    },
+    {
+      name: 'List VRF Requests',
+      value: 'listVRFRequests',
+      description: 'List VRF requests for account',
+      action: 'List VRF requests',
+    },
+    {
+      name: 'Get VRF Subscription',
+      value: 'getVRFSubscription',
+      description: 'Get VRF subscription details',
+      action: 'Get VRF subscription',
+    },
+    {
+      name: 'Create VRF Subscription',
+      value: 'createVRFSubscription',
+      description: 'Create new VRF subscription',
+      action: 'Create VRF subscription',
+    },
+  ],
+  default: 'createVRFRequest',
+},
+{
+  displayName: 'Operation',
+  name: 'operation',
+  type: 'options',
+  noDataExpression: true,
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+    },
+  },
+  options: [
+    {
+      name: 'Create Upkeep',
+      value: 'createUpkeep',
+      description: 'Register new upkeep for automation',
+      action: 'Create upkeep',
+    },
+    {
+      name: 'Get Upkeep',
+      value: 'getUpkeep',
+      description: 'Get upkeep details and status',
+      action: 'Get upkeep',
+    },
+    {
+      name: 'List Upkeeps',
+      value: 'listUpkeeps',
+      description: 'List upkeeps for account',
+      action: 'List upkeeps',
+    },
+    {
+      name: 'Update Upkeep',
+      value: 'updateUpkeep',
+      description: 'Update upkeep configuration',
+      action: 'Update upkeep',
+    },
+    {
+      name: 'Cancel Upkeep',
+      value: 'cancelUpkeep',
+      description: 'Cancel upkeep registration',
+      action: 'Cancel upkeep',
+    },
+  ],
+  default: 'createUpkeep',
+},
+{
+  displayName: 'Operation',
+  name: 'operation',
+  type: 'options',
+  noDataExpression: true,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+    },
+  },
+  options: [
+    {
+      name: 'Send Cross-Chain Message',
+      value: 'sendCCIPMessage',
+      description: 'Send a cross-chain message via CCIP',
+      action: 'Send cross-chain message',
+    },
+    {
+      name: 'Get Message Status',
+      value: 'getCCIPMessage',
+      description: 'Get the status of a cross-chain message',
+      action: 'Get message status',
+    },
+    {
+      name: 'List Messages',
+      value: 'listCCIPMessages',
+      description: 'List cross-chain messages',
+      action: 'List messages',
+    },
+    {
+      name: 'Get CCIP Lanes',
+      value: 'getCCIPLanes',
+      description: 'Get available cross-chain lanes',
+      action: 'Get CCIP lanes',
+    },
+    {
+      name: 'Calculate Fees',
+      value: 'getCCIPFees',
+      description: 'Calculate cross-chain message fees',
+      action: 'Calculate fees',
+    },
+  ],
+  default: 'sendCCIPMessage',
+},
+      // Parameter definitions
+{
+  displayName: 'Network',
+  name: 'network',
+  type: 'options',
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+      operation: ['getAllFeeds', 'getFeed', 'getLatestPrice', 'searchFeeds'],
+    },
+  },
+  options: [
+    { name: 'Ethereum', value: 'ethereum' },
+    { name: 'Polygon', value: 'polygon' },
+    { name: 'BSC', value: 'bsc' },
+    { name: 'Avalanche', value: 'avalanche' },
+    { name: 'Arbitrum', value: 'arbitrum' },
+    { name: 'Optimism', value: 'optimism' },
+  ],
+  default: 'ethereum',
+  description: 'The blockchain network to query',
+},
+{
+  displayName: 'Category',
+  name: 'category',
+  type: 'options',
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+      operation: ['getAllFeeds'],
+    },
+  },
+  options: [
+    { name: 'All', value: '' },
+    { name: 'Cryptocurrency', value: 'crypto' },
+    { name: 'Forex', value: 'forex' },
+    { name: 'Commodities', value: 'commodities' },
+    { name: 'Indices', value: 'indices' },
+  ],
+  default: '',
+  description: 'Filter feeds by category',
+  required: false,
+},
+{
+  displayName: 'Feed ID',
+  name: 'feedId',
+  type: 'string',
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+      operation: ['getFeed', 'getFeedRounds', 'getLatestPrice'],
+    },
+  },
+  default: '',
+  description: 'The unique identifier of the price feed',
+  required: true,
+},
+{
+  displayName: 'From Timestamp',
+  name: 'from',
+  type: 'number',
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+      operation: ['getFeedRounds'],
+    },
+  },
+  default: 0,
+  description: 'Start timestamp for historical data (Unix timestamp)',
+  required: false,
+},
+{
+  displayName: 'To Timestamp',
+  name: 'to',
+  type: 'number',
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+      operation: ['getFeedRounds'],
+    },
+  },
+  default: 0,
+  description: 'End timestamp for historical data (Unix timestamp)',
+  required: false,
+},
+{
+  displayName: 'Limit',
+  name: 'limit',
+  type: 'number',
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+      operation: ['getFeedRounds'],
+    },
+  },
+  default: 100,
+  description: 'Maximum number of rounds to return',
+  required: false,
+},
+{
+  displayName: 'Search Query',
+  name: 'query',
+  type: 'string',
+  displayOptions: {
+    show: {
+      resource: ['priceFeeds'],
+      operation: ['searchFeeds'],
+    },
+  },
+  default: '',
+  description: 'Symbol or name to search for',
+  required: true,
+},
+{
+  displayName: 'Network',
+  name: 'network',
+  type: 'options',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['createVRFRequest', 'getVRFRequest', 'listVRFRequests', 'getVRFSubscription', 'createVRFSubscription'],
+    },
+  },
+  options: [
+    { name: 'Ethereum Mainnet', value: 'ethereum' },
+    { name: 'Polygon', value: 'polygon' },
+    { name: 'BSC', value: 'bsc' },
+    { name: 'Avalanche', value: 'avalanche' },
+    { name: 'Sepolia Testnet', value: 'sepolia' },
+  ],
+  default: 'ethereum',
+  description: 'The blockchain network to use',
+},
+{
+  displayName: 'Subscription ID',
+  name: 'subscriptionId',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['createVRFRequest'],
+    },
+  },
+  default: '',
+  description: 'The VRF subscription ID to use for the request',
+},
+{
+  displayName: 'Key Hash',
+  name: 'keyHash',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['createVRFRequest'],
+    },
+  },
+  default: '',
+  description: 'The key hash identifying which oracle key pair to use',
+},
+{
+  displayName: 'Callback Gas Limit',
+  name: 'callbackGasLimit',
+  type: 'number',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['createVRFRequest'],
+    },
+  },
+  default: 100000,
+  description: 'The gas limit for the callback function',
+},
+{
+  displayName: 'Number of Words',
+  name: 'numWords',
+  type: 'number',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['createVRFRequest'],
+    },
+  },
+  default: 1,
+  description: 'The number of random words to request (max 500)',
+},
+{
+  displayName: 'Request ID',
+  name: 'requestId',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['getVRFRequest'],
+    },
+  },
+  default: '',
+  description: 'The VRF request ID to retrieve',
+},
+{
+  displayName: 'Account Address',
+  name: 'account',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['listVRFRequests'],
+    },
+  },
+  default: '',
+  description: 'The account address to list VRF requests for',
+},
+{
+  displayName: 'Status',
+  name: 'status',
+  type: 'options',
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['listVRFRequests'],
+    },
+  },
+  options: [
+    { name: 'All', value: 'all' },
+    { name: 'Pending', value: 'pending' },
+    { name: 'Fulfilled', value: 'fulfilled' },
+    { name: 'Failed', value: 'failed' },
+  ],
+  default: 'all',
+  description: 'Filter requests by status',
+},
+{
+  displayName: 'Limit',
+  name: 'limit',
+  type: 'number',
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['listVRFRequests'],
+    },
+  },
+  default: 10,
+  description: 'Maximum number of requests to return',
+},
+{
+  displayName: 'Subscription ID',
+  name: 'subscriptionId',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['vRFRequests'],
+      operation: ['getVRFSubscription'],
+    },
+  },
+  default: '',
+  description: 'The VRF subscription ID to retrieve',
+},
+{
+  displayName: 'Network',
+  name: 'network',
+  type: 'options',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['createUpkeep', 'getUpkeep', 'listUpkeeps', 'updateUpkeep', 'cancelUpkeep'],
+    },
+  },
+  options: [
+    {
+      name: 'Ethereum Mainnet',
+      value: 'ethereum',
+    },
+    {
+      name: 'Ethereum Goerli',
+      value: 'ethereum-goerli',
+    },
+    {
+      name: 'Polygon',
+      value: 'polygon',
+    },
+    {
+      name: 'BSC',
+      value: 'bsc',
+    },
+    {
+      name: 'Avalanche',
+      value: 'avalanche',
+    },
+  ],
+  default: 'ethereum',
+  description: 'The blockchain network to use',
+},
+{
+  displayName: 'Target Contract',
+  name: 'target',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['createUpkeep'],
+    },
+  },
+  default: '',
+  description: 'The target contract address for automation',
+},
+{
+  displayName: 'Gas Limit',
+  name: 'gasLimit',
+  type: 'number',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['createUpkeep', 'updateUpkeep'],
+    },
+  },
+  default: 2500000,
+  description: 'Gas limit for upkeep execution',
+},
+{
+  displayName: 'Check Data',
+  name: 'checkData',
+  type: 'string',
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['createUpkeep', 'updateUpkeep'],
+    },
+  },
+  default: '0x',
+  description: 'ABI-encoded data for checkUpkeep function',
+},
+{
+  displayName: 'Amount',
+  name: 'amount',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['createUpkeep'],
+    },
+  },
+  default: '',
+  description: 'Amount of LINK tokens to fund the upkeep (in wei)',
+},
+{
+  displayName: 'Upkeep ID',
+  name: 'upkeepId',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['getUpkeep', 'updateUpkeep', 'cancelUpkeep'],
+    },
+  },
+  default: '',
+  description: 'The ID of the upkeep',
+},
+{
+  displayName: 'Account Address',
+  name: 'account',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['listUpkeeps'],
+    },
+  },
+  default: '',
+  description: 'The account address to list upkeeps for',
+},
+{
+  displayName: 'Status',
+  name: 'status',
+  type: 'options',
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['listUpkeeps'],
+    },
+  },
+  options: [
+    {
+      name: 'All',
+      value: 'all',
+    },
+    {
+      name: 'Active',
+      value: 'active',
+    },
+    {
+      name: 'Paused',
+      value: 'paused',
+    },
+    {
+      name: 'Cancelled',
+      value: 'cancelled',
+    },
+  ],
+  default: 'all',
+  description: 'Filter upkeeps by status',
+},
+{
+  displayName: 'Limit',
+  name: 'limit',
+  type: 'number',
+  displayOptions: {
+    show: {
+      resource: ['automation'],
+      operation: ['listUpkeeps'],
+    },
+  },
+  default: 100,
+  description: 'Maximum number of upkeeps to return',
+},
+{
+  displayName: 'Source Network',
+  name: 'sourceNetwork',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['sendCCIPMessage', 'listCCIPMessages', 'getCCIPLanes', 'getCCIPFees'],
+    },
+  },
+  default: '',
+  description: 'The source blockchain network',
+},
+{
+  displayName: 'Destination Network',
+  name: 'destinationNetwork',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['sendCCIPMessage', 'listCCIPMessages', 'getCCIPLanes', 'getCCIPFees'],
+    },
+  },
+  default: '',
+  description: 'The destination blockchain network',
+},
+{
+  displayName: 'Receiver Address',
+  name: 'receiver',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['sendCCIPMessage'],
+    },
+  },
+  default: '',
+  description: 'The receiver address on the destination network',
+},
+{
+  displayName: 'Message Data',
+  name: 'data',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['sendCCIPMessage', 'getCCIPFees'],
+    },
+  },
+  default: '',
+  description: 'The message data to send',
+},
+{
+  displayName: 'Token Amounts',
+  name: 'tokenAmounts',
+  type: 'string',
+  required: false,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['sendCCIPMessage', 'getCCIPFees'],
+    },
+  },
+  default: '',
+  description: 'JSON array of token amounts to transfer',
+},
+{
+  displayName: 'Message ID',
+  name: 'messageId',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['getCCIPMessage'],
+    },
+  },
+  default: '',
+  description: 'The CCIP message ID',
+},
+{
+  displayName: 'Network',
+  name: 'network',
+  type: 'string',
+  required: true,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['getCCIPMessage'],
+    },
+  },
+  default: '',
+  description: 'The blockchain network to query',
+},
+{
+  displayName: 'Account Address',
+  name: 'account',
+  type: 'string',
+  required: false,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['listCCIPMessages'],
+    },
+  },
+  default: '',
+  description: 'Filter messages by account address',
+},
+{
+  displayName: 'Status',
+  name: 'status',
+  type: 'options',
+  required: false,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['listCCIPMessages'],
+    },
+  },
+  options: [
+    {
+      name: 'Pending',
+      value: 'pending',
+    },
+    {
+      name: 'Success',
+      value: 'success',
+    },
+    {
+      name: 'Failed',
+      value: 'failed',
+    },
+  ],
+  default: '',
+  description: 'Filter messages by status',
+},
+{
+  displayName: 'Limit',
+  name: 'limit',
+  type: 'number',
+  required: false,
+  displayOptions: {
+    show: {
+      resource: ['cCIP'],
+      operation: ['listCCIPMessages'],
+    },
+  },
+  default: 100,
+  description: 'Maximum number of messages to return',
+},
     ],
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
-    const returnData: INodeExecutionData[] = [];
     const resource = this.getNodeParameter('resource', 0) as string;
-    const operation = this.getNodeParameter('operation', 0) as string;
 
-    for (let i = 0; i < items.length; i++) {
-      try {
-        let result: INodeExecutionData[] = [];
-        switch (resource) {
-          case 'priceFeed':
-            result = await executePriceFeed(this, operation, i);
-            break;
-          case 'dataFeed':
-            result = await executeDataFeed(this, operation, i);
-            break;
-          case 'vrf':
-            result = await executeVRF(this, operation, i);
-            break;
-          case 'automation':
-            result = await executeAutomation(this, operation, i);
-            break;
-          case 'ccip':
-            result = await executeCCIP(this, operation, i);
-            break;
-          case 'functions':
-            result = await executeFunctions(this, operation, i);
-            break;
-          case 'linkToken':
-            result = await executeLinkToken(this, operation, i);
-            break;
-          case 'networkUtils':
-            result = await executeNetworkUtils(this, operation, i);
-            break;
-          default:
-            throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`);
+    switch (resource) {
+      case 'priceFeeds':
+        return [await executePriceFeedsOperations.call(this, items)];
+      case 'vRFRequests':
+        return [await executeVRFRequestsOperations.call(this, items)];
+      case 'automation':
+        return [await executeAutomationOperations.call(this, items)];
+      case 'cCIP':
+        return [await executeCCIPOperations.call(this, items)];
+      case 'unknown':
+        return [await executeunknownOperations.call(this, items)];
+      default:
+        throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported`);
+    }
+  }
+}
+
+// ============================================================
+// Resource Handler Functions
+// ============================================================
+
+async function executePriceFeedsOperations(
+  this: IExecuteFunctions,
+  items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+  const returnData: INodeExecutionData[] = [];
+  const operation = this.getNodeParameter('operation', 0) as string;
+  const credentials = await this.getCredentials('chainlinkApi') as any;
+
+  for (let i = 0; i < items.length; i++) {
+    try {
+      let result: any;
+
+      switch (operation) {
+        case 'getAllFeeds': {
+          const network = this.getNodeParameter('network', i) as string;
+          const category = this.getNodeParameter('category', i) as string;
+
+          const queryParams: any = { network };
+          if (category) {
+            queryParams.category = category;
+          }
+
+          const queryString = new URLSearchParams(queryParams).toString();
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl || 'https://api.chain.link/v1'}/feeds?${queryString}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
         }
-        returnData.push(...result);
-      } catch (error) {
-        if (this.continueOnFail()) {
-          returnData.push({ json: { error: error instanceof Error ? error.message : 'Unknown error' }, pairedItem: { item: i } });
-          continue;
+
+        case 'getFeed': {
+          const feedId = this.getNodeParameter('feedId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const queryString = new URLSearchParams({ network }).toString();
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl || 'https://api.chain.link/v1'}/feeds/${feedId}?${queryString}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
         }
-        throw error;
+
+        case 'getFeedRounds': {
+          const feedId = this.getNodeParameter('feedId', i) as string;
+          const from = this.getNodeParameter('from', i) as number;
+          const to = this.getNodeParameter('to', i) as number;
+          const limit = this.getNodeParameter('limit', i) as number;
+
+          const queryParams: any = {};
+          if (from > 0) queryParams.from = from.toString();
+          if (to > 0) queryParams.to = to.toString();
+          if (limit > 0) queryParams.limit = limit.toString();
+
+          const queryString = new URLSearchParams(queryParams).toString();
+          const url = `${credentials.baseUrl || 'https://api.chain.link/v1'}/feeds/${feedId}/rounds${queryString ? '?' + queryString : ''}`;
+
+          const options: any = {
+            method: 'GET',
+            url,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'getLatestPrice': {
+          const feedId = this.getNodeParameter('feedId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const queryString = new URLSearchParams({ network }).toString();
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl || 'https://api.chain.link/v1'}/feeds/${feedId}/latest?${queryString}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'searchFeeds': {
+          const query = this.getNodeParameter('query', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const queryParams = new URLSearchParams({ query, network }).toString();
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl || 'https://api.chain.link/v1'}/feeds/search?${queryParams}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        default:
+          throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`);
+      }
+
+      returnData.push({ 
+        json: result,
+        pairedItem: { item: i }
+      });
+
+    } catch (error: any) {
+      if (this.continueOnFail()) {
+        returnData.push({ 
+          json: { error: error.message },
+          pairedItem: { item: i }
+        });
+      } else {
+        if (error.httpCode) {
+          throw new NodeApiError(this.getNode(), error);
+        }
+        throw new NodeOperationError(this.getNode(), error.message);
       }
     }
-    return [returnData];
   }
+
+  return returnData;
 }
 
-async function executePriceFeed(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getLatestPrice': return priceFeed.getLatestPrice.call(ctx, i);
-    case 'getPriceFeedData': return priceFeed.getPriceFeedData.call(ctx, i);
-    case 'getHistoricalPrice': return priceFeed.getHistoricalPrice.call(ctx, i);
-    case 'getFeedDescription': return priceFeed.getFeedDescription.call(ctx, i);
-    case 'getMultiplePrices': return priceFeed.getMultiplePrices.call(ctx, i);
-    case 'listAvailableFeeds': return priceFeed.listAvailableFeeds.call(ctx, i);
-    case 'getDerivedPrice': return priceFeed.getDerivedPrice.call(ctx, i);
-    case 'getFeedRegistryPrice': return priceFeed.getFeedRegistryPrice.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
+async function executeVRFRequestsOperations(
+  this: IExecuteFunctions,
+  items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+  const returnData: INodeExecutionData[] = [];
+  const operation = this.getNodeParameter('operation', 0) as string;
+  const credentials = await this.getCredentials('chainlinkApi') as any;
+
+  for (let i = 0; i < items.length; i++) {
+    try {
+      let result: any;
+
+      switch (operation) {
+        case 'createVRFRequest': {
+          const network = this.getNodeParameter('network', i) as string;
+          const subscriptionId = this.getNodeParameter('subscriptionId', i) as string;
+          const keyHash = this.getNodeParameter('keyHash', i) as string;
+          const callbackGasLimit = this.getNodeParameter('callbackGasLimit', i) as number;
+          const numWords = this.getNodeParameter('numWords', i) as number;
+
+          const options: any = {
+            method: 'POST',
+            url: `${credentials.baseUrl}/vrf/requests`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: {
+              network,
+              subscriptionId,
+              keyHash,
+              callbackGasLimit,
+              numWords,
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'getVRFRequest': {
+          const requestId = this.getNodeParameter('requestId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/vrf/requests/${requestId}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs: {
+              network,
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'listVRFRequests': {
+          const network = this.getNodeParameter('network', i) as string;
+          const account = this.getNodeParameter('account', i) as string;
+          const status = this.getNodeParameter('status', i) as string;
+          const limit = this.getNodeParameter('limit', i) as number;
+
+          const qs: any = {
+            network,
+            account,
+            limit,
+          };
+
+          if (status !== 'all') {
+            qs.status = status;
+          }
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/vrf/requests`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs,
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'getVRFSubscription': {
+          const subscriptionId = this.getNodeParameter('subscriptionId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/vrf/subscriptions/${subscriptionId}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs: {
+              network,
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'createVRFSubscription': {
+          const network = this.getNodeParameter('network', i) as string;
+
+          const options: any = {
+            method: 'POST',
+            url: `${credentials.baseUrl}/vrf/subscriptions`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: {
+              network,
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        default:
+          throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`);
+      }
+
+      returnData.push({
+        json: result,
+        pairedItem: { item: i },
+      });
+    } catch (error: any) {
+      if (this.continueOnFail()) {
+        returnData.push({
+          json: { error: error.message },
+          pairedItem: { item: i },
+        });
+      } else {
+        throw new NodeApiError(this.getNode(), error);
+      }
+    }
   }
+
+  return returnData;
 }
 
-async function executeDataFeed(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getProofOfReserve': return dataFeed.getProofOfReserve.call(ctx, i);
-    case 'getNFTFloorPrice': return dataFeed.getNFTFloorPrice.call(ctx, i);
-    case 'getL2SequencerStatus': return dataFeed.getL2SequencerStatus.call(ctx, i);
-    case 'listPorFeeds': return dataFeed.listPorFeeds.call(ctx, i);
-    case 'listNftFloorFeeds': return dataFeed.listNftFloorFeeds.call(ctx, i);
-    case 'listSequencerFeeds': return dataFeed.listSequencerFeeds.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
+async function executeAutomationOperations(
+  this: IExecuteFunctions,
+  items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+  const returnData: INodeExecutionData[] = [];
+  const operation = this.getNodeParameter('operation', 0) as string;
+  const credentials = await this.getCredentials('chainlinkApi') as any;
+
+  for (let i = 0; i < items.length; i++) {
+    try {
+      let result: any;
+
+      switch (operation) {
+        case 'createUpkeep': {
+          const network = this.getNodeParameter('network', i) as string;
+          const target = this.getNodeParameter('target', i) as string;
+          const gasLimit = this.getNodeParameter('gasLimit', i) as number;
+          const checkData = this.getNodeParameter('checkData', i) as string;
+          const amount = this.getNodeParameter('amount', i) as string;
+
+          const body: any = {
+            network,
+            target,
+            gasLimit,
+            checkData,
+            amount,
+          };
+
+          const options: any = {
+            method: 'POST',
+            url: `${credentials.baseUrl}/automation/upkeeps`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'getUpkeep': {
+          const upkeepId = this.getNodeParameter('upkeepId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/automation/upkeeps/${upkeepId}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs: {
+              network,
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'listUpkeeps': {
+          const network = this.getNodeParameter('network', i) as string;
+          const account = this.getNodeParameter('account', i) as string;
+          const status = this.getNodeParameter('status', i) as string;
+          const limit = this.getNodeParameter('limit', i) as number;
+
+          const queryParams: any = {
+            network,
+            account,
+            limit,
+          };
+
+          if (status !== 'all') {
+            queryParams.status = status;
+          }
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/automation/upkeeps`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs: queryParams,
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'updateUpkeep': {
+          const upkeepId = this.getNodeParameter('upkeepId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+          const gasLimit = this.getNodeParameter('gasLimit', i) as number;
+          const checkData = this.getNodeParameter('checkData', i) as string;
+
+          const body: any = {
+            network,
+            gasLimit,
+            checkData,
+          };
+
+          const options: any = {
+            method: 'PUT',
+            url: `${credentials.baseUrl}/automation/upkeeps/${upkeepId}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'cancelUpkeep': {
+          const upkeepId = this.getNodeParameter('upkeepId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const options: any = {
+            method: 'DELETE',
+            url: `${credentials.baseUrl}/automation/upkeeps/${upkeepId}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs: {
+              network,
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        default:
+          throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`);
+      }
+
+      returnData.push({ 
+        json: result, 
+        pairedItem: { item: i } 
+      });
+
+    } catch (error: any) {
+      if (this.continueOnFail()) {
+        returnData.push({ 
+          json: { error: error.message }, 
+          pairedItem: { item: i } 
+        });
+      } else {
+        throw new NodeApiError(this.getNode(), error);
+      }
+    }
   }
+
+  return returnData;
 }
 
-async function executeVRF(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getSubscriptionDetails': return vrf.getSubscriptionDetails.call(ctx, i);
-    case 'getVRFCoordinatorInfo': return vrf.getVRFCoordinatorInfo.call(ctx, i);
-    case 'listSubscriptionConsumers': return vrf.listSubscriptionConsumers.call(ctx, i);
-    case 'calculateRequestPrice': return vrf.calculateRequestPrice.call(ctx, i);
-    case 'checkRequestStatus': return vrf.checkRequestStatus.call(ctx, i);
-    case 'decodeVRFRequest': return vrf.decodeVRFRequest.call(ctx, i);
-    case 'getVRFNetworks': return vrf.getVRFNetworks.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
+async function executeCCIPOperations(
+  this: IExecuteFunctions,
+  items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+  const returnData: INodeExecutionData[] = [];
+  const operation = this.getNodeParameter('operation', 0) as string;
+  const credentials = await this.getCredentials('chainlinkApi') as any;
+
+  for (let i = 0; i < items.length; i++) {
+    try {
+      let result: any;
+
+      switch (operation) {
+        case 'sendCCIPMessage': {
+          const sourceNetwork = this.getNodeParameter('sourceNetwork', i) as string;
+          const destinationNetwork = this.getNodeParameter('destinationNetwork', i) as string;
+          const receiver = this.getNodeParameter('receiver', i) as string;
+          const data = this.getNodeParameter('data', i) as string;
+          const tokenAmounts = this.getNodeParameter('tokenAmounts', i) as string;
+
+          const body: any = {
+            sourceNetwork,
+            destinationNetwork,
+            receiver,
+            data,
+          };
+
+          if (tokenAmounts) {
+            try {
+              body.tokenAmounts = JSON.parse(tokenAmounts);
+            } catch (error: any) {
+              throw new NodeOperationError(this.getNode(), 'Invalid JSON format for tokenAmounts');
+            }
+          }
+
+          const options: any = {
+            method: 'POST',
+            url: `${credentials.baseUrl}/ccip/messages`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body,
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'getCCIPMessage': {
+          const messageId = this.getNodeParameter('messageId', i) as string;
+          const network = this.getNodeParameter('network', i) as string;
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/ccip/messages/${messageId}`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs: {
+              network,
+            },
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'listCCIPMessages': {
+          const sourceNetwork = this.getNodeParameter('sourceNetwork', i) as string;
+          const destinationNetwork = this.getNodeParameter('destinationNetwork', i) as string;
+          const account = this.getNodeParameter('account', i) as string;
+          const status = this.getNodeParameter('status', i) as string;
+          const limit = this.getNodeParameter('limit', i) as number;
+
+          const qs: any = {
+            sourceNetwork,
+            destinationNetwork,
+            limit,
+          };
+
+          if (account) {
+            qs.account = account;
+          }
+
+          if (status) {
+            qs.status = status;
+          }
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/ccip/messages`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs,
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'getCCIPLanes': {
+          const sourceNetwork = this.getNodeParameter('sourceNetwork', i) as string;
+          const destinationNetwork = this.getNodeParameter('destinationNetwork', i) as string;
+
+          const qs: any = {};
+
+          if (sourceNetwork) {
+            qs.sourceNetwork = sourceNetwork;
+          }
+
+          if (destinationNetwork) {
+            qs.destinationNetwork = destinationNetwork;
+          }
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/ccip/lanes`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs,
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        case 'getCCIPFees': {
+          const sourceNetwork = this.getNodeParameter('sourceNetwork', i) as string;
+          const destinationNetwork = this.getNodeParameter('destinationNetwork', i) as string;
+          const data = this.getNodeParameter('data', i) as string;
+          const tokenAmounts = this.getNodeParameter('tokenAmounts', i) as string;
+
+          const qs: any = {
+            sourceNetwork,
+            destinationNetwork,
+            data,
+          };
+
+          if (tokenAmounts) {
+            try {
+              qs.tokenAmounts = JSON.stringify(JSON.parse(tokenAmounts));
+            } catch (error: any) {
+              throw new NodeOperationError(this.getNode(), 'Invalid JSON format for tokenAmounts');
+            }
+          }
+
+          const options: any = {
+            method: 'GET',
+            url: `${credentials.baseUrl}/ccip/fees`,
+            headers: {
+              'Authorization': `Bearer ${credentials.apiKey}`,
+            },
+            qs,
+            json: true,
+          };
+
+          result = await this.helpers.httpRequest(options) as any;
+          break;
+        }
+
+        default:
+          throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`);
+      }
+
+      returnData.push({ json: result, pairedItem: { item: i } });
+
+    } catch (error: any) {
+      if (this.continueOnFail()) {
+        returnData.push({ 
+          json: { error: error.message },
+          pairedItem: { item: i }
+        });
+      } else {
+        if (error.httpCode) {
+          throw new NodeApiError(this.getNode(), error, { httpCode: error.httpCode });
+        }
+        throw new NodeOperationError(this.getNode(), error.message);
+      }
+    }
   }
+
+  return returnData;
 }
 
-async function executeAutomation(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getUpkeepDetails': return automation.getUpkeepDetails.call(ctx, i);
-    case 'checkUpkeepStatus': return automation.checkUpkeepStatus.call(ctx, i);
-    case 'getUpkeepBalance': return automation.getUpkeepBalance.call(ctx, i);
-    case 'getMinimumBalance': return automation.getMinimumBalance.call(ctx, i);
-    case 'simulateUpkeep': return automation.simulateUpkeep.call(ctx, i);
-    case 'getRegistryState': return automation.getRegistryState.call(ctx, i);
-    case 'getUpkeepHistory': return automation.getUpkeepHistory.call(ctx, i);
-    case 'listAutomationNetworks': return automation.listAutomationNetworks.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
-  }
-}
+// PARSE ERROR for unknown — manual fix needed
+// Raw: // No additional imports
 
-async function executeCCIP(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getSupportedLanes': return ccip.getSupportedLanes.call(ctx, i);
-    case 'checkLaneSupport': return ccip.checkLaneSupport.call(ctx, i);
-    case 'calculateMessageFee': return ccip.calculateMessageFee.call(ctx, i);
-    case 'getRouterConfiguration': return ccip.getRouterConfiguration.call(ctx, i);
-    case 'trackCrossChainMessage': return ccip.trackCrossChainMessage.call(ctx, i);
-    case 'listChainSelectors': return ccip.listChainSelectors.call(ctx, i);
-    case 'getTokenTransferLimits': return ccip.getTokenTransferLimits.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
-  }
-}
-
-async function executeFunctions(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getSubscriptionInfo': return functions.getSubscriptionInfo.call(ctx, i);
-    case 'getDONConfiguration': return functions.getDONConfiguration.call(ctx, i);
-    case 'estimateRequestCost': return functions.estimateRequestCost.call(ctx, i);
-    case 'decodeResponse': return functions.decodeResponse.call(ctx, i);
-    case 'getSupportedNetworks': return functions.getSupportedNetworks.call(ctx, i);
-    case 'validateSourceCode': return functions.validateSourceCode.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
-  }
-}
-
-async function executeLinkToken(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getLinkBalance': return linkToken.getLinkBalance.call(ctx, i);
-    case 'getLinkPrice': return linkToken.getLinkPrice.call(ctx, i);
-    case 'transferLink': return linkToken.transferLink.call(ctx, i);
-    case 'getLinkTokenAddress': return linkToken.getLinkTokenAddress.call(ctx, i);
-    case 'checkLinkAllowance': return linkToken.checkLinkAllowance.call(ctx, i);
-    case 'getLinkTotalSupply': return linkToken.getLinkTotalSupply.call(ctx, i);
-    case 'getAllLinkAddresses': return linkToken.getAllLinkAddresses.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
-  }
-}
-
-async function executeNetworkUtils(ctx: IExecuteFunctions, op: string, i: number): Promise<INodeExecutionData[]> {
-  switch (op) {
-    case 'getGasPrice': return networkUtils.getGasPrice.call(ctx, i);
-    case 'getEthPrice': return networkUtils.getEthPrice.call(ctx, i);
-    case 'getNetworkStatus': return networkUtils.getNetworkStatus.call(ctx, i);
-    case 'validateAddress': return networkUtils.validateAddress.call(ctx, i);
-    case 'listSupportedNetworks': return networkUtils.listSupportedNetworks.call(ctx, i);
-    case 'checkContractExists': return networkUtils.checkContractExists.call(ctx, i);
-    case 'convertUnits': return networkUtils.convertUnits.call(ctx, i);
-    case 'getBlockInfo': return networkUtils.getBlockInfo.call(ctx, i);
-    default: throw new Error(`Unknown operation: ${op}`);
-  }
-}
+{
+  displayName: 'Operation',
+  name: 'operation',
+  type: 'options',
+  noDataExpression: true,
+  displayOptions: {
+    show: {
+      resource: ['functions'],
+    },
+  },
+  options: [
+    {
+      name: 'Create Function Request',
+      value: 'createFunctionRequest',
+      d
