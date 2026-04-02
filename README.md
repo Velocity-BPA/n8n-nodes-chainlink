@@ -8,24 +8,25 @@
 >
 > For licensing information, visit https://velobpa.com/licensing or contact licensing@velobpa.com.
 
-This n8n community node enables seamless integration with Chainlink's decentralized oracle network, providing access to 4+ resources including price feeds, VRF (Verifiable Random Function), automation services, and Cross-Chain Interoperability Protocol (CCIP) for building reliable Web3 workflows.
+This n8n community node provides comprehensive integration with Chainlink's decentralized oracle network, offering access to 5 core resources including price feeds, VRF requests, automation jobs, cross-chain messaging, and serverless functions. Streamline your blockchain data workflows with real-time oracle data, verifiable randomness, and cross-chain interoperability.
 
 ![n8n Community Node](https://img.shields.io/badge/n8n-Community%20Node-blue)
 ![License](https://img.shields.io/badge/license-BSL--1.1-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
 ![Chainlink](https://img.shields.io/badge/Chainlink-Oracle-375BD2)
-![Web3](https://img.shields.io/badge/Web3-DeFi-FF6B35)
-![Blockchain](https://img.shields.io/badge/Blockchain-Multi--Chain-00D4AA)
+![Web3](https://img.shields.io/badge/Web3-DeFi-orange)
+![Blockchain](https://img.shields.io/badge/Blockchain-Integration-green)
 
 ## Features
 
-- **Price Feed Integration** - Access real-time and historical price data from Chainlink's decentralized price feeds
-- **VRF (Verifiable Random Function)** - Generate cryptographically secure random numbers for gaming, NFTs, and fair selection processes
-- **Automation Services** - Monitor and trigger smart contract functions based on time, price, or custom conditions
-- **CCIP Cross-Chain** - Enable secure cross-chain token transfers and message passing between different blockchains
-- **Multi-Network Support** - Works across Ethereum, Polygon, BSC, Avalanche, and other supported networks
-- **Real-time Monitoring** - Subscribe to oracle updates and contract events for instant notifications
-- **Developer-Friendly** - Simple configuration with comprehensive error handling and validation
+- **Real-time Price Feeds** - Access live cryptocurrency and asset pricing data from Chainlink's decentralized oracle network
+- **Verifiable Random Functions** - Generate cryptographically secure randomness for gaming, NFTs, and fair selection processes
+- **Automation Jobs** - Create and manage Chainlink Keepers for automated smart contract execution and maintenance
+- **Cross-chain Messaging** - Enable secure communication and data transfer between different blockchain networks
+- **Serverless Functions** - Execute custom logic with Chainlink Functions for off-chain computation and API integration
+- **Multi-network Support** - Compatible with Ethereum, Polygon, Avalanche, BSC, and other supported networks
+- **Event Monitoring** - Track oracle updates, job completions, and cross-chain message status in real-time
+- **Gas Optimization** - Built-in tools for monitoring and optimizing transaction costs across networks
 
 ## Installation
 
@@ -60,10 +61,9 @@ n8n start
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| API Key | Your Chainlink node operator API key or service provider key | Yes |
+| API Key | Your Chainlink API key for accessing premium features and higher rate limits | Yes |
 | Network | Target blockchain network (mainnet, testnet, polygon, etc.) | Yes |
-| Node URL | Custom Chainlink node endpoint (optional, uses default if empty) | No |
-| Private Key | Wallet private key for transaction signing (encrypted storage) | No |
+| Environment | Production or sandbox environment | Yes |
 
 ## Resources & Operations
 
@@ -71,97 +71,106 @@ n8n start
 
 | Operation | Description |
 |-----------|-------------|
-| Get Latest Price | Retrieve the most recent price data for a trading pair |
-| Get Historical Data | Fetch historical price information within a date range |
-| Get Round Data | Access specific round data by round ID |
-| List Available Feeds | Get all available price feed contracts for a network |
-| Subscribe to Updates | Set up real-time price update notifications |
+| Get Latest Price | Retrieve the most recent price data for a specific asset pair |
+| Get Historical Prices | Fetch historical price data within a specified time range |
+| Get Price Feed Info | Obtain metadata about available price feeds and their configurations |
+| Subscribe to Updates | Set up real-time price update notifications for specified feeds |
 
 ### 2. VRF Requests
 
 | Operation | Description |
 |-----------|-------------|
-| Request Random Number | Initiate a VRF request for cryptographically secure randomness |
-| Get Request Status | Check the fulfillment status of a VRF request |
-| Get Random Result | Retrieve the generated random number from a fulfilled request |
-| List VRF Coordinators | Get available VRF coordinator contracts by network |
-| Estimate Request Cost | Calculate the LINK token cost for a VRF request |
+| Request Random Number | Submit a new VRF request for verifiable random number generation |
+| Get Request Status | Check the fulfillment status of a submitted VRF request |
+| Get Random Result | Retrieve the generated random number from a completed VRF request |
+| List Requests | Get a list of all VRF requests for the authenticated account |
 
-### 3. Automation
-
-| Operation | Description |
-|-----------|-------------|
-| Create Upkeep | Register a new automation upkeep for smart contract monitoring |
-| Get Upkeep Info | Retrieve details about an existing upkeep registration |
-| Fund Upkeep | Add LINK tokens to fund an upkeep's execution |
-| Cancel Upkeep | Cancel and withdraw remaining funds from an upkeep |
-| List Active Upkeeps | Get all active automation upkeeps for your account |
-| Get Execution History | View past automation executions and their results |
-
-### 4. CCIP
+### 3. Automation Jobs
 
 | Operation | Description |
 |-----------|-------------|
-| Send Cross-Chain Message | Initiate a cross-chain message or token transfer |
-| Get Message Status | Track the status of a cross-chain transaction |
-| Estimate Fees | Calculate cross-chain transfer fees between networks |
-| List Supported Chains | Get all blockchain networks supported by CCIP |
-| Get Lane Configuration | Retrieve configuration for specific cross-chain lanes |
+| Create Job | Set up a new Chainlink Keeper automation job with specified conditions |
+| Update Job | Modify the parameters or conditions of an existing automation job |
+| Delete Job | Remove an automation job and stop its execution |
+| Get Job Status | Check the current status and execution history of an automation job |
+| List Jobs | Retrieve all automation jobs associated with the account |
+
+### 4. Cross Chain Messaging
+
+| Operation | Description |
+|-----------|-------------|
+| Send Message | Initiate a cross-chain message to another blockchain network |
+| Get Message Status | Track the delivery status of a cross-chain message |
+| List Messages | View all sent and received cross-chain messages |
+| Get Supported Chains | Retrieve the list of blockchain networks available for messaging |
+
+### 5. Functions
+
+| Operation | Description |
+|-----------|-------------|
+| Execute Function | Run a Chainlink Function with specified parameters and data sources |
+| Get Function Result | Retrieve the output from a completed function execution |
+| List Functions | Get all available functions and their descriptions |
+| Get Execution History | View the execution history and logs for function calls |
 
 ## Usage Examples
 
 ```javascript
-// Get latest ETH/USD price from Chainlink price feed
-const priceData = await chainlink.priceFeeds.getLatestPrice({
-  pair: 'ETH/USD',
-  network: 'ethereum-mainnet'
-});
-console.log(`Current ETH price: $${priceData.price}`);
+// Get latest ETH/USD price from Chainlink price feeds
+{
+  "operation": "getLatestPrice",
+  "resource": "priceFeeds",
+  "pair": "ETH/USD",
+  "network": "ethereum"
+}
 ```
 
 ```javascript
 // Request verifiable random number for NFT minting
-const vrfRequest = await chainlink.vrfRequests.requestRandomNumber({
-  keyHash: '0x8af398995b04c28e9951adb9721ef74c74f93e6a478f39e7e0777be13527e7ef',
-  fee: '100000000000000000', // 0.1 LINK
-  network: 'polygon'
-});
-console.log(`VRF Request ID: ${vrfRequest.requestId}`);
+{
+  "operation": "requestRandomNumber",
+  "resource": "vrfRequests",
+  "keyHash": "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15",
+  "fee": "2000000000000000000",
+  "seed": 12345
+}
 ```
 
 ```javascript
-// Set up automation for DeFi position monitoring
-const upkeep = await chainlink.automation.createUpkeep({
-  name: 'DeFi Position Monitor',
-  contractAddress: '0x742d35Cc6635C0532925a3b8D400631d',
-  checkData: '0x',
-  gasLimit: 500000,
-  adminAddress: '0x8ba1f109551bD432803012645Hac136c',
-  network: 'ethereum-mainnet'
-});
+// Create automation job for liquidity monitoring
+{
+  "operation": "createJob",
+  "resource": "automationJobs",
+  "name": "Liquidity Monitor",
+  "target": "0x742d35Cc6639C2532e29141fBC8c8C3C6b8D7B6f",
+  "condition": "balance < 1000000000000000000",
+  "action": "refillLiquidity"
+}
 ```
 
 ```javascript
-// Send cross-chain USDC transfer via CCIP
-const ccipTransfer = await chainlink.ccip.sendCrossChainMessage({
-  destinationChain: 'polygon',
-  tokenAddress: '0xA0b86a33E6441e7c7D7D4d33c51D5E3F95A9C0b0',
-  amount: '100000000', // 100 USDC
-  receiver: '0x742d35Cc6635C0532925a3b8D400631d',
-  sourceNetwork: 'ethereum'
-});
+// Send cross-chain message from Ethereum to Polygon
+{
+  "operation": "sendMessage",
+  "resource": "crossChainMessaging",
+  "sourceChain": "ethereum",
+  "destinationChain": "polygon",
+  "recipient": "0x1234567890123456789012345678901234567890",
+  "data": "0xabcdef",
+  "gasLimit": 500000
+}
 ```
 
 ## Error Handling
 
 | Error | Description | Solution |
 |-------|-------------|----------|
-| Invalid API Key | Authentication failed with provided credentials | Verify API key is correct and has proper permissions |
-| Insufficient LINK Balance | Not enough LINK tokens for VRF or automation requests | Fund your wallet with LINK tokens for the target network |
-| Network Not Supported | Requested blockchain network is not available | Check supported networks list and use valid network identifier |
-| Feed Not Found | Price feed contract doesn't exist for the requested pair | Verify trading pair symbol and network combination |
-| Transaction Failed | Blockchain transaction was reverted or failed | Check gas limits, token balances, and contract parameters |
-| Rate Limit Exceeded | Too many API requests in short timeframe | Implement request throttling and retry logic |
+| Invalid API Key | The provided API key is invalid or expired | Verify your API key in Chainlink dashboard and update credentials |
+| Insufficient Funds | Account has insufficient LINK tokens or ETH for gas | Add LINK tokens to your account and ensure adequate gas fees |
+| Network Not Supported | The specified blockchain network is not available | Check supported networks list and use a valid network identifier |
+| Rate Limit Exceeded | Too many requests sent in a short time period | Implement request throttling or upgrade to higher tier API access |
+| VRF Request Failed | Random number generation request could not be fulfilled | Check VRF subscription balance and request parameters |
+| Job Execution Error | Automation job failed to execute properly | Review job conditions and target contract status |
 
 ## Development
 
@@ -207,4 +216,4 @@ Contributions are welcome! Please ensure:
 
 - **Issues**: [GitHub Issues](https://github.com/Velocity-BPA/n8n-nodes-chainlink/issues)
 - **Chainlink Documentation**: [docs.chain.link](https://docs.chain.link)
-- **Chainlink Discord**: [Official Discord Community](https://discord.gg/chainlink)
+- **Developer Community**: [Chainlink Discord](https://discord.gg/chainlink)
