@@ -6,7 +6,7 @@ import {
 export class ChainlinkApi implements ICredentialType {
 	name = 'chainlinkApi';
 	displayName = 'Chainlink API';
-	documentationUrl = 'https://docs.chain.link/';
+	documentationUrl = 'https://docs.chain.link/api';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -14,16 +14,16 @@ export class ChainlinkApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			required: false,
-			description: 'API key for Chainlink services (required for certain operations)',
+			description: 'API key for Chainlink API authentication. Get your API key from the Chainlink developer portal.',
+			required: true,
 		},
 		{
-			displayName: 'Base URL',
+			displayName: 'API Base URL',
 			name: 'baseUrl',
 			type: 'string',
-			default: 'https://api.chain.link/v1',
+			default: 'https://api.chain.link',
+			description: 'Base URL for the Chainlink API',
 			required: true,
-			description: 'Base URL for Chainlink API',
 		},
 	];
 }
